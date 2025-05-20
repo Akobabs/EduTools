@@ -1,0 +1,241 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Predicting Student Performance in TALEs using OULAD Dataset\n",
+    "\n",
+    "This notebook implements the educational framework for predicting student academic achievement in a technology-assisted learning environment (TALE) using the Open University Learning Analytics Dataset (OULAD). It includes data preprocessing, exploratory data analysis (EDA), model training, evaluation, and explainable AI (XAI) using SHAP."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Setup and Data Loading"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "from sklearn.model_selection import train_test_split, cross_val_score\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from xgboost import XGBClassifier\n",
+    "from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve\n",
+    "from sklearn.preprocessing import LabelEncoder, StandardScaler\n",
+    "from tensorflow.keras.models import Sequential\n",
+    "from tensorflow.keras.layers import Dense\n",
+    "import shap\n",
+    "import joblib\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "\n",
+    "# Set random seed\n",
+    "np.random.seed(42)\n",
+    "\n",
+    "# Load and preprocess data\n",
+    "from src.data_preprocessing import load_and_merge_data, preprocess_data\n",
+    "data = load_and_merge_data()\n",
+    "data = preprocess_data(data)\n",
+    "\n",
+    "# Select features and target\n",
+    "features = ['gender', 'region', 'highest_education', 'age_band', 'num_of_prev_attempts', 'studied_credits', 'total_clicks', 'avg_assessment_score']\n",
+    "target = 'final_result'\n",
+    "X = data[features]\n",
+    "y = data[target]\n",
+    "\n",
+    "print('Dataset Shape:', data.shape)\n",
+    "data.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Exploratory Data Analysis (EDA)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+  marker: { color: '#1f77b4' }\n",
+    "            }],\n",
+    "            layout: {\n",
+    "                title: { text: 'Feature Importance (SHAP Values)', font: { size: 16, color: '#1f77b4' } },\n",
+    "                xaxis: { title: 'Mean SHAP Value', titlefont: { size: 14 } },\n",
+    "                yaxis: { title: 'Features', titlefont: { size: 14 } },\n",
+    "                margin: { l: 150 },\n",
+    "                plot_bgcolor: '#f8f9fa',\n",
+    "                paper_bgcolor: '#f8f9fa'\n",
+    "            }\n",
+    "        });\n",
+    "    </script>\n",
+    "</body>\n",
+    "</html>\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Model Training and Testing"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from src.models.ml_model import MLModel\n",
+    "from src.models.dl_model import DLModel\n",
+    "\n",
+    "# Train-test split\n",
+    "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)\n",
+    "\n",
+    "# Train models\n",
+    "rf_model = MLModel(model_type='rf').train(X_train, y_train)\n",
+    "xgb_model = MLModel(model_type='xgb').train(X_train, y_train)\n",
+    "nn_model = DLModel(input_dim=X_train.shape[1]).train(X_train, y_train, epochs=10, batch_size=32)\n",
+    "\n",
+    "# Save models\n",
+    "rf_model.save('models/rf_model.joblib')\n",
+    "xgb_model.save('models/xgb_model.joblib')\n",
+    "nn_model.save('models/nn_model.h5')\n",
+    "\n",
+    "# Predictions\n",
+    "rf_pred = rf_model.predict(X_test)\n",
+    "xgb_pred = xgb_model.predict(X_test)\n",
+    "nn_pred = nn_model.predict(X_test)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. Model Evaluation\n",
+    "\n",
+    "Placeholder results (update with actual outputs):\n",
+    "- Random Forest: Accuracy=0.87, Precision=0.89, Recall=0.85, F1=0.87, ROC-AUC=0.92\n",
+    "- XGBoost: Accuracy=0.86, Precision=0.88, Recall=0.84, F1=0.86, ROC-AUC=0.91\n",
+    "- Neural Network: Accuracy=0.82, Precision=0.84, Recall=0.80, F1=0.82, ROC-AUC=0.88"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def evaluate_model(y_true, y_pred, model_name):\n",
+    "    print(f'\\n{model_name} Evaluation:')\n",
+    "    print('Accuracy:', accuracy_score(y_true, y_pred))\n",
+    "    print('Precision:', precision_score(y_true, y_pred))\n",
+    "    print('Recall:', recall_score(y_true, y_pred))\n",
+    "    print('F1-Score:', f1_score(y_true, y_pred))\n",
+    "    print('ROC-AUC:', roc_auc_score(y_true, y_pred))\n",
+    "    \n",
+    "    # Confusion Matrix\n",
+    "    cm = confusion_matrix(y_true, y_pred)\n",
+    "    plt.figure(figsize=(6, 4))\n",
+    "    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')\n",
+    "    plt.title(f'Confusion Matrix - {model_name}')\n",
+    "    plt.xlabel('Predicted')\n",
+    "    plt.ylabel('Actual')\n",
+    "    plt.savefig(f'figures/cm_{model_name.lower().replace(\" \", \"_\")}.png')\n",
+    "    plt.close()\n",
+    "\n",
+    "# Evaluate models\n",
+    "evaluate_model(y_test, rf_pred, 'Random Forest')\n",
+    "evaluate_model(y_test, xgb_pred, 'XGBoost')\n",
+    "evaluate_model(y_test, nn_pred, 'Neural Network')\n",
+    "\n",
+    "# ROC Curve\n",
+    "plt.figure(figsize=(8, 6))\n",
+    "for model, pred in [(rf_model.model, rf_model.predict_proba(X_test)[:, 1]),\n",
+    "                    (xgb_model.model, xgb_model.predict_proba(X_test)[:, 1]),\n",
+    "                    (nn_model.model, nn_model.predict(X_test).flatten())]:\n",
+    "    fpr, tpr, _ = roc_curve(y_test, pred)\n",
+    "    plt.plot(fpr, tpr, label=f'{model.__class__.__name__} (AUC = {roc_auc_score(y_test, pred):.2f})')\n",
+    "plt.plot([0, 1], [0, 1], 'k--')\n",
+    "plt.xlabel('False Positive Rate')\n",
+    "plt.ylabel('True Positive Rate')\n",
+    "plt.title('ROC Curve')\n",
+    "plt.legend()\n",
+    "plt.savefig('figures/roc_curve.png')\n",
+    "plt.close()\n",
+    "\n",
+    "# Bar chart for metrics\n",
+    "metrics = ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'ROC-AUC']\n",
+    "rf_scores = [accuracy_score(y_test, rf_pred), precision_score(y_test, rf_pred), recall_score(y_test, rf_pred), f1_score(y_test, rf_pred), roc_auc_score(y_test, rf_pred)]\n",
+    "xgb_scores = [accuracy_score(y_test, xgb_pred), precision_score(y_test, xgb_pred), recall_score(y_test, xgb_pred), f1_score(y_test, xgb_pred), roc_auc_score(y_test, xgb_pred)]\n",
+    "nn_scores = [accuracy_score(y_test, nn_pred), precision_score(y_test, nn_pred), recall_score(y_test, nn_pred), f1_score(y_test, nn_pred), roc_auc_score(y_test, nn_pred)]\n",
+    "\n",
+    "x = np.arange(len(metrics))\n",
+    "width = 0.25\n",
+    "plt.figure(figsize=(10, 6))\n",
+    "plt.bar(x - width, rf_scores, width, label='Random Forest')\n",
+    "plt.bar(x, xgb_scores, width, label='XGBoost')\n",
+    "plt.bar(x + width, nn_scores, width, label='Neural Network')\n",
+    "plt.xticks(x, metrics)\n",
+    "plt.ylabel('Score')\n",
+    "plt.title('Model Performance Comparison')\n",
+    "plt.legend()\n",
+    "plt.savefig('figures/model_performance_bar.png')\n",
+    "plt.close()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 5. Explainable AI (XAI) with SHAP"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from src.models.xai_explain import SHAPExplainer\n",
+    "\n",
+    "# SHAP for Random Forest\n",
+    "shap_explainer = SHAPExplainer(rf_model.model)\n",
+    "shap_explainer.explain(X_test, plot=True, save_path='figures/shap_summary.png')\n",
+    "\n",
+    "# Placeholder SHAP values (update with actual)\n",
+    "# Mean SHAP values: avg_assessment_score=4.2, total_clicks=2.8"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

@@ -1,0 +1,277 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predict Student Performance</title>
+</head>
+<body>
+    <header>
+        <h1>TALE Predictive Framework</h1>
+        <nav>
+            <a href="/">Home |</a>
+            <a href="/predict">Predict |</a>
+            <a href="/about">About</a>
+        </nav>
+    </header>
+    <main>
+        <section class="form-container">
+            <h2>Input Student Data</h2>
+            <form id="predict-form" action="/predict" method="POST">
+                <div class="form-group">
+                    <label for="gender">Gender:</label>
+                    <select id="gender" name="gender" required>
+                        <option value="" disabled selected>Select Gender</option>
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="region">Region:</label>
+                    <select id="region" name="region" required>
+                        <option value="" disabled selected>Select Region</option>
+                        <option value="North">North</option>
+                        <option value="South">South</option>
+                        <option value="East">East</option>
+                        <option value="West">West</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="highest_education">Highest Education:</label>
+                    <select id="highest_education" name="highest_education" required>
+                        <option value="" disabled selected>Select Education</option>
+                        <option value="A Level">A Level</option>
+                        <option value="HE Qualification">HE Qualification</option>
+                        <option value="Lower Than A Level">Lower Than A Level</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="age_band">Age Band:</label>
+                    <select id="age_band" name="age_band" required>
+                        <option value="" disabled selected>Select Age Band</option>
+                        <option value="0-35">0-35</option>
+                        <option value="35-55">35-55</option>
+                        <option value="55+">55+</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="num_of_prev_attempts">Previous Attempts:</label>
+                    <input type="number" id="num_of_prev_attempts" name="num_of_prev_attempts" min="0" max="10" placeholder="0-10" required>
+                </div>
+                <div class="form-group">
+                    <label for="studied_credits">Studied Credits:</label>
+                    <input type="number" id="studied_credits" name="studied_credits" min="0" max="500" placeholder="0-500" required>
+                </div>
+                <div class="form-group">
+                    <label for="total_clicks">Total VLE Clicks:</label>
+                    <input type="number" id="total_clicks" name="total_clicks" min="0" max="10000" placeholder="0-10000" required>
+                </div>
+                <div class="form-group">
+                    <label for="avg_assessment_score">Average Assessment Score:</label>
+                    <input type="number" id="avg_assessment_score" name="avg_assessment_score" min="0" max="100" step="0.1" placeholder="0-100" required>
+                </div>
+                <button type="submit">Predict</button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        <p>© 2025 TALE Predictive Framework</p>
+    </footer>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e6f0fa 0%, #ffffff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: linear-gradient(90deg, #1f77b4, #4a90e2);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        header h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        nav a {
+            color: white;
+            margin: 0 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #d4e6f1;
+            text-decoration: underline;
+        }
+        main {
+            flex: 1;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        .form-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .form-container h2 {
+            color: #1f77b4;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            border-color: #1f77b4;
+            box-shadow: 0 0 8px rgba(31,119,180,0.3);
+            outline: none;
+        }
+        .form-group input::placeholder {
+            color: #999;
+        }
+        button {
+            background: linear-gradient(90deg, #28a745, #34c759);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        footer {
+            background: #1f77b4;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            width: 100%;
+        }
+        @media (max-width: 600px) {
+            main {
+                margin: 15px;
+                padding: 15px;
+            }
+            .form-container {
+                padding: 20px;
+            }
+            header h1 {
+                font-size: 1.5em;
+            }
+            nav a {
+                margin: 0 10px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('predict-form');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    const totalClicks = parseFloat(document.getElementById('total_clicks').value);
+                    const assessmentScore = parseFloat(document.getElementById('avg_assessment_score').value);
+                    const prevAttempts = parseInt(document.getElementById('num_of_prev_attempts').value);
+                    const credits = parseInt(document.getElementById('studied_credits').value);
+
+                    if (isNaN(totalClicks) || totalClicks < 0 || totalClicks > 10000) {
+                        alert('Total VLE Clicks must be between 0 and 10,000.');
+                        event.preventDefault();
+                        return;
+                    }
+                    if (isNaN(assessmentScore) || assessmentScore < 0 || assessmentScore > 100) {
+                        alert('Average Assessment Score must be between 0 and 100.');
+                        event.preventDefault();
+                        return;
+                    }
+                    if (isNaN(prevAttempts) || prevAttempts < 0 || prevAttempts > 10) {
+                        alert('Previous Attempts must be between 0 and 10.');
+                        event.preventDefault();
+                        return;
+                    }
+                    if (isNaN(credits) || credits < 0 || credits > 500) {
+                        alert('Studied Credits must be between 0 and 500.');
+                        event.preventDefault();
+                        return;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

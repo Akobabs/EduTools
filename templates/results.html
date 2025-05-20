@@ -1,0 +1,233 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Results</title>
+    <script src="https://cdn.plotly.com/plotly-latest.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>TALE Predictive Framework</h1>
+        <nav>
+            <a href="/">Home |</a>
+            <a href="/predict">Predict |</a>
+            <a href="/about">About</a>
+        </nav>
+    </header>
+    <main>
+        <section class="results-container">
+            <h2>Prediction Results</h2>
+            <div class="prediction">
+                <h3>Outcome</h3>
+                <p id="prediction-outcome">Predicted Result: <strong>{{ prediction }}</strong></p>
+            </div>
+            <div class="explanation">
+                <h3>SHAP Explanation</h3>
+                <p>Key factors influencing the prediction:</p>
+                <div id="shap-plot"></div>
+            </div>
+            <a href="/predict" class="btn">Make Another Prediction</a>
+        </section>
+    </main>
+    <footer>
+        <p>© 2025 TALE Predictive Framework</p>
+    </footer>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e6f0fa 0%, #ffffff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: linear-gradient(90deg, #1f77b4, #4a90e2);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        header h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        nav a {
+            color: white;
+            margin: 0 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #d4e6f1;
+            text-decoration: underline;
+        }
+        main {
+            flex: 1;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        .results-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .results-container h2 {
+            color: #1f77b4;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            text-align: center;
+        }
+        .prediction, .explanation {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .prediction:hover, .explanation:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .prediction h3, .explanation h3 {
+            color: #1f77b4;
+            margin-bottom: 10px;
+        }
+        #prediction-outcome {
+            font-size: 1.2em;
+            color: #333;
+        }
+        #prediction-outcome strong {
+            color: #28a745;
+        }
+        .explanation p {
+            color: #555;
+            margin-bottom: 15px;
+        }
+        #shap-plot {
+            width: 100%;
+            height: 350px;
+        }
+        .btn {
+            background: linear-gradient(90deg, #28a745, #34c759);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            margin: 20px auto;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        footer {
+            background: #1f77b4;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            width: 100%;
+        }
+        @media (max-width: 600px) {
+            main {
+                margin: 15px;
+                padding: 15px;
+            }
+            .results-container {
+                padding: 20px;
+            }
+            header h1 {
+                font-size: 1.5em;
+            }
+            nav a {
+                margin: 0 10px;
+                font-size: 0.9em;
+            }
+            #shap-plot {
+                height: 250px;
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Dynamic SHAP bar plot using Plotly
+            var data = [{
+                type: 'bar',
+                x: {{ shap_data.values | tojson }},
+                y: {{ shap_data.features | tojson }},
+                orientation: 'h',
+                marker: { color: '#1f77b4' }
+            }];
+            var layout = {
+                title: {
+                    text: 'Feature Importance (SHAP Values)',
+                    font: { size: 16, color: '#1f77b4' }
+                },
+                xaxis: { title: 'Mean SHAP Value', titlefont: { size: 14 } },
+                yaxis: { title: 'Features', titlefont: { size: 14 } },
+                margin: { l: 150 },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: '#f8f9fa'
+            };
+            Plotly.newPlot('shap-plot', data, layout, { responsive: true });
+        });
+    </script>
+</body>
+</html>
